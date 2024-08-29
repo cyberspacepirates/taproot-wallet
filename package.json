@@ -12,9 +12,11 @@
   "dependencies": {
     "@bitcoinerlab/secp256k1": "^1.1.1",
     "@types/qrcode": "^1.5.5",
+    "axios": "^1.7.5",
     "bech32": "^2.0.0",
     "bip32": "^4.0.0",
     "bip39": "^3.1.0",
+    "coinselect": "^3.1.13",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@types/axios": "^0.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.5.0",

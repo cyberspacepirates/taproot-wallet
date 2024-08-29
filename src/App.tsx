@@ -12,9 +12,40 @@ function App() {
     ScreenState.Receive
   );
   const [walletState, setWalletState] = useState<{
+    sats: number;
     seed: Buffer | undefined;
     xpub: string;
-  }>({ seed: undefined, xpub: "" });
+    utxos:
+      | Array<{
+          hash: string;
+          vout: number;
+          derivationPath: string;
+          value: number;
+        }>
+      | [];
+  }>({ sats: 0, seed: undefined, xpub: "", utxos: [] });
+
+  const [utxo, setUTXO] = useState<{
+    hash: string;
+    vout: number;
+    derivationPath: string;
+    value: number;
+  }>({
+    hash: "",
+    vout: 0,
+    derivationPath: "m/86'/1'/0'/0/0",
+    value: 0,
+  });
+
+  const [recipient, setRecipient] = useState<{
+    address: string;
+    value: number;
+    result: string;
+  }>({
+    address: "",
+    value: 0,
+    result: "",
+  });
 
   const [npage, setNPage] = useState(0);
 
@@ -38,9 +69,20 @@ function App() {
 
   if (appState === AppState.Full || appState === AppState.WatchOnly) {
     const wallet = new Wallet(walletState.seed, walletState.xpub);
+    wallet.scanUTXOS().then(() => {
+      console.log(wallet.utxos);
+      setWalletState((s) => ({
+        ...s,
+        utxos: wallet.utxos,
+      }));
+    });
+    // setWalletState((s) => ({
+    //   ...s,
+    //   utxos: wallet.utxos,
+    // }));
     return (
       <>
-        <p style={{ fontSize: "32px" }}>{0} sats</p>
+        <p style={{ fontSize: "32px" }}>{walletState.sats} sats</p>
         <div>
           <button onClick={() => setScreenState(ScreenState.SilentPayment)}>
             Silent Payment
@@ -48,7 +90,7 @@ function App() {
           <button onClick={() => setScreenState(ScreenState.Receive)}>
             Receive
           </button>
-          <button>Send</button>
+          <button onClick={() => setScreenState(ScreenState.Send)}>Send</button>
           <button>Channel</button>
           <button onClick={() => setScreenState(ScreenState.UTXOS)}>
             UTXOs
@@ -57,12 +99,13 @@ function App() {
             Addresses
           </button>
         </div>
-        <div style={{ minHeight: "500px", textAlign: "center" }}>
+        <div style={{ minHeight: "520px", textAlign: "center" }}>
           {screenState === ScreenState.SilentPayment &&
             (function () {
               const sp = wallet.generateSilentPayment(0);
               let qrCodeSP = "";
               QRCode.toDataURL(sp, (err, data) => {
+                if (err) return;
                 qrCodeSP = data;
               });
 
@@ -82,6 +125,61 @@ function App() {
                 </div>
               );
             })()}
+          {screenState === ScreenState.Send &&
+            (function () {
+              return (
+                <>
+                  <h3>Sending</h3>
+                  <div>
+                    <label>Address</label>
+                    <br />
+                    <input
+                      type="text"
+                      style={{ padding: "5px", width: "500px" }}
+                      value={recipient.address}
+                      onChange={(e) =>
+                        setRecipient((s) => ({ ...s, address: e.target.value }))
+                      }
+                      required
+                    ></input>
+                  </div>
+                  <div>
+                    <label>Amount</label>
+                    <br />
+                    <input
+                      type="number"
+                      style={{ padding: "5px", width: "500px" }}
+                      value={recipient.value}
+                      onChange={(e) =>
+                        setRecipient((s) => ({
+                          ...s,
+                          value: Number(e.target.value),
+                        }))
+                      }
+                      required
+                    ></input>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const tx = wallet.sendToAddress(
+                        recipient.address,
+                        recipient.value,
+                        walletState.utxos
+                      );
+                      setRecipient((s) => ({
+                        ...s,
+                        result: tx,
+                      }));
+                    }}
+                  >
+                    Send
+                  </button>
+                  <div style={{ overflowWrap: "break-word" }}>
+                    <p>{recipient.result}</p>
+                  </div>
+                </>
+              );
+            })()}
           {screenState === ScreenState.UTXOS &&
             (function () {
               return (
@@ -94,6 +192,10 @@ function App() {
                       <input
                         type="text"
                         style={{ padding: "5px", width: "500px" }}
+                        value={utxo.hash}
+                        onChange={(e) =>
+                          setUTXO((s) => ({ ...s, hash: e.target.value }))
+                        }
                         required
                       ></input>
                     </div>
@@ -101,7 +203,16 @@ function App() {
                       <label>VOUT</label>
                       <br />
                       <input
-                        value={0}
+                        value={utxo.vout}
+                        onChange={(e) =>
+                          setUTXO((s) => ({
+                            ...s,
+                            vout:
+                              Number(e.target.value) < 0
+                                ? 0
+                                : Number(e.target.value),
+                          }))
+                        }
                         type={"number"}
                         style={{ padding: "5px", width: "500px" }}
                       ></input>
@@ -110,13 +221,87 @@ function App() {
                       <label>Derivation Path</label>
                       <br />
                       <input
-                        value={"m/86'/1'/0'/0/0"}
+                        value={utxo.derivationPath}
+                        onChange={(e) =>
+                          setUTXO((s) => ({
+                            ...s,
+                            derivationPath: e.target.value,
+                          }))
+                        }
                         type={"text"}
                         style={{ padding: "5px", width: "500px" }}
                       ></input>
                     </div>
+                    <div>
+                      <label>Value</label>
+                      <br />
+                      <input
+                        value={utxo.value}
+                        onChange={(e) =>
+                          setUTXO((s) => ({
+                            ...s,
+                            value:
+                              Number(e.target.value) < 0
+                                ? 0
+                                : Number(e.target.value),
+                          }))
+                        }
+                        type={"number"}
+                        style={{ padding: "5px", width: "500px" }}
+                      ></input>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setWalletState((s) => ({
+                          ...s,
+                          utxos: s.utxos.concat({
+                            //@ts-expect-error next
+                            hash: utxo.hash,
+                            vout: utxo.vout,
+                            value: utxo.value,
+                            derivationPath: utxo.derivationPath,
+                          }),
+                          sats:
+                            s.utxos.reduce((acc, curr) => acc + curr.value, 0) +
+                            utxo.value,
+                        }));
+                      }}
+                    >
+                      Add UTXO
+                    </button>
                   </div>
                   <h3>List of UTXOS</h3>
+                  {walletState.utxos.reverse().map((utxo, i) => {
+                    return (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "baseline",
+                        }}
+                      >
+                        <div>{utxo.hash}</div>
+                        <div>{utxo.vout}</div>
+                        <div>{utxo.derivationPath}</div>
+                        <div>{utxo.value}</div>
+                        <div>
+                          <button
+                            onClick={() => {
+                              setWalletState((s) => ({
+                                ...s,
+                                utxos: s.utxos
+                                  .reverse()
+                                  .filter((_v, index) => i !== index)
+                                  .reverse(),
+                              }));
+                            }}
+                          >
+                            Delete UTXO
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                   <div></div>
                 </>
               );
@@ -126,6 +311,7 @@ function App() {
               const newAddress = wallet.generateAddress(0);
               let addressQRCode = "";
               QRCode.toDataURL("bitcoin:" + newAddress, (err, data) => {
+                if (err) return;
                 addressQRCode = data;
               });
               return (
@@ -147,7 +333,7 @@ function App() {
                   style={{
                     display: "flex",
                     alignContent: "space-between",
-                    gap: "30px",
+                    gap: "12px",
                     marginTop: "2px",
                     width: "700px",
                   }}
