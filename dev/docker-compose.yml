@@ -24,7 +24,7 @@ services:
     environment:
       ELECTRS_ARGS: --jsonrpc-import --daemon-rpc-addr bitcoin:18443 --cookie alice:password
     # volumes:
-    #- ./nginx.conf.in:/srv/explorer/source/contrib/nginx.conf.in
+    #  ./nginx.conf.in:/srv/explorer/source/contrib/nginx.conf.in
     ports:
       - "51111:50001"
       - "8094:80"
