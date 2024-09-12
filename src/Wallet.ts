@@ -11,7 +11,7 @@ import axios from "axios";
 bitcoin.initEccLib(ecc);
 
 const network = bitcoin.networks.regtest;
-const API_URL = "http://localhost:8094/regtest/api";
+const API_URL = "http://localhost:3000";
 
 const bip32 = BIP32Factory(ecc);
 
